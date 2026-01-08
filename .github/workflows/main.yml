@@ -1,0 +1,16 @@
+name: Simple CI CD Pipeline
+on:
+  push:
+    branches: [ "main" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Chechout code
+      uses: actions/checkout@v4
+    - name: Build Docker image
+      run: docker build -t simple-web-app .
+    - name: Run basic quality check
+      run: |
+        echo "Checking files..."
+        ls
