@@ -8,9 +8,9 @@ jobs:
     steps:
     - name: Chechout code
       uses: actions/checkout@v4
+    - name: Login to Github Container Registry
+      run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
     - name: Build Docker image
-      run: docker build -t simple-web-app .
-    - name: Run basic quality check
-      run: |
-        echo "Checking files..."
-        ls
+      run: docker build -t ghcr.io/${{ github.repository }}/simple-web-app:latest .
+    - name: Push Docker image
+      run: docker push ghcr.io/${{ github.repository }}/simple-web-app:latest
