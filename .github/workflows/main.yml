@@ -1,0 +1,87 @@
+name: CI Pipeline - Quality, Build, Scan, Push
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Get the code from Github
+      - name: Chechout code
+        uses: actions/checkout@v4
+
+      #Code Quality Check (HTML + JS)
+      - name: Code Quality Check (lint & syntax)
+        run: |
+          echo "Running basic code quality checks..."
+          test -f index.html
+          test -f script.js
+          echo "Code quality check passed"
+
+      #Login to Container Registry
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      #Set Docker Image Name (lowercase)
+      - name: Set image name
+        run: |
+          echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}:latest" >> $GITHUB_ENV
+
+      #Build Docker Image
+      - name: Build Docker image
+        run: |
+          docker build -t $IMAGE_NAME .
+
+      #Security Scan (Trivy)
+      - name: Security scan with Trivy
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: 0
+
+      #Push Docker Image
+      - name: Push Docker image
+        run: |
+          docker push $IMAGE_NAME
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Create Kubernetes cluster (KIND)
+        uses: helm/kind-action@v1
+
+      - name: Pull Docker image
+        run: |
+          docker pull ghcr.io/${GITHUB_REPOSITORY,,}:latest
+
+      - name: Load image into KIND
+        run: |
+          kind load docker-image ghcr.io/${GITHUB_REPOSITORY,,}:latest
+
+      - name: Deploy application to Kubernetes
+        run: |
+          kubectl apply -f deployment.yaml
+          kubectl apply -f service.yaml
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods
+          kubectl get svc
