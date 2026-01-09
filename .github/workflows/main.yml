@@ -92,3 +92,9 @@ jobs:
         run: |
           kubectl get pods
           kubectl get svc
+
+      - name: Test application internally
+        run: |
+          kubectl port-forward svc/my-service 8080:80 &
+          sleep 5
+          curl http://localhost:8080
