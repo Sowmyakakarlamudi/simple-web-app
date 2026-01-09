@@ -57,3 +57,31 @@ jobs:
       - name: Push Docker image
         run: |
           docker push $IMAGE_NAME
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Create Kubernetes cluster (KIND)
+        uses: helm/kind-action@v1
+
+      - name: Pull Docker image
+        run: |
+          docker pull ghcr.io/${GITHUB_REPOSITORY,,}:latest
+
+      - name: Load image into KIND
+        run: |
+          kind load docker-image ghcr.io/${GITHUB_REPOSITORY,,}:latest
+
+      - name: Deploy application to Kubernetes
+        run: |
+          kubectl apply -f deployment.yaml
+          kubectl apply -f service.yaml
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods
+          kubectl get svc
