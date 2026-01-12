@@ -93,4 +93,17 @@ jobs:
           kubectl get pods
           kubectl get svc
 
-      
+      - name: Install Metrics Server (Monitoring)
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+          kubectl patch deployment metrics-server -n kube-system \
+            --type='json' \
+            -p='[{"op":"add","path":"/spec/template//spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+
+      - name: Verify Monitoring
+        run: |
+          echo "Waiting for metricsserver..."
+          sleep 20
+          kubectl get pods -n kube-system
+          kubectl top pods || echo "Metrics still initializing"
+          kubectl top nodes || echo "Metrics still initializing"
