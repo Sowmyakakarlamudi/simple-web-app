@@ -93,6 +93,15 @@ jobs:
           kubectl get pods
           kubectl get svc
 
+  monitoring:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create kubernetes cluster (KIND)
+        uses: helm/kind-action@v1
+        
       - name: Install Metrics Server (Monitoring)
         run: |
           kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
@@ -112,3 +121,24 @@ jobs:
           kubectl get pods -n kube-system
           kubectl top pods || echo "Metrics still initializing"
           kubectl top nodes || echo "Metrics still initializing"
+
+  observability:
+    needs: monitoring
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create kubernetes cluster (KIND)
+        uses: helm/kind-action@v1
+
+      - name: Observability - Logs, Events, State
+        run: |
+          echo "POD STATUS"
+          kubectl get pods -o wide || true
+          echo "APPLICATION LOGS"
+          POD=$(kubectl get pods -o jsonpath="{.items[0].metadata.name}")
+          kubectl logs $POD || true
+          echo "POD DETAILS"
+          kubectl describe pod $POD || true
+          echo "CLUSTER EVENTS"
+          kubectl get events --sort-by=.metadata.creationTimestamp ||true
